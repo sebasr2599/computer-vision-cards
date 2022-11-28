@@ -1,0 +1,2 @@
+En este link se encuentra una descripción completa del proyecto
+https://github.com/sebasr2599/computer-vision-cards
