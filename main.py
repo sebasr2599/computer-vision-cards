@@ -4,6 +4,7 @@ from tensorflow import keras
 import numpy as np
 from tensorflow.keras import layers
 import os
+import pyttsx3
 
 # download and load mnist model
 
@@ -54,6 +55,11 @@ def load_model():
 
 # open video stream from usb camera
 cap = cv.VideoCapture("/dev/video2")
+# set frame rate
+cap.set(cv.CAP_PROP_FPS, 30)
+# text to speech
+engine = pyttsx3.init()
+# cap = cv.VideoCapture(0)
 if not cap.isOpened():
     print('Unable to open video stream')
     exit(0)
@@ -82,22 +88,42 @@ while True:
     cv.drawContours(frame, contours, -1, (0, 255, 0), 3)
 
     # predict
+    predominant = -1
+    aux = 0
     for cnt in contours:
         x, y, w, h = cv.boundingRect(cnt)
-        if w > 100 and h > 100:
+        if w > 120 and h > 120:
             roi = thresh[y:y+h, x:x+w]
             roi = cv.resize(roi, (28, 28))
             roi = roi.reshape(1, 28, 28, 1)
             # draw rectangle
             cv.rectangle(frame, (x, y), (x+w, y+h), (0, 0, 255), 2)
+            # scale 0/1
             roi = roi / 255.0
+            # classify
             pred = model.predict(roi)
-            cv.putText(frame, str(pred.argmax()), (x, y),
-                       cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
-    # show frame
-    #cv.imshow('frame', frame)
+            # get predominant class
+            aux = pred
+            if type(predominant) == int:
+                predominant = pred
+            if aux[0][aux.argmax()] > predominant[0][predominant.argmax()]:
+                predominant = pred
+
+    if type(predominant) == int:
+        cv.putText(frame, "Error", (20, 30),
+                   cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+    else:
+        cv.putText(frame, "La probabilidad  de ser "+str(predominant.argmax())+" es de " +
+                   str(predominant[0][predominant.argmax()]), (20, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2)
+        engine.say(str(predominant.argmax()))
+        #engine.setProperty('rate', 1000)
+        # engine.runAndWait()
 
     # display frame
+    cv.imshow('frameBW', thresh)
+    if cv.waitKey(1) == ord('q'):
+        break
+
     cv.imshow('frame', frame)
     if cv.waitKey(1) == ord('q'):
         break
